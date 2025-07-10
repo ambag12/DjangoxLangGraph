@@ -1,8 +1,0 @@
-Django>=5.0,<6.0
-jupyter
-langchain-cohere
-langgraph
-langgraph-supervisor
-python-decouple
-permit
-djangorestframework
