@@ -1,7 +1,7 @@
 
 # 🧠 CV Review Assistant using Django + LangGraph (INCOMPLETE)
 
-This project is an intelligent CV analysis tool built with **Django REST Framework**, **LangGraph**, and **Pydantic**. It allows users to upload a CV file, runs it through a document-reading agent and LangGraph pipeline, and returns a structured review with suggestions for improvement and relevant references.
+This project is an intelligent CV analysis tool built with **Django REST Framework**, **LangGraph**, and **Pydantic**. It allows users to upload a CV file, runs it through a document-reading agent and LangGraph pipeline, and returns a structured review with suggestions for improvement and relevant references in this code i also used Permission table to set permisision on the basis of owner name.
 
 ---
 
