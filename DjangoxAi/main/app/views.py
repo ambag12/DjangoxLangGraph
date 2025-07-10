@@ -8,6 +8,15 @@ from .ai.tools import l_doc,get_doc
 from .ai.llms_config import config_llm
 from .ai.agent_conf import agent_res
 from langgraph.checkpoint.memory import InMemorySaver
+import tempfile, os
+from django.conf import settings
+import uuid
+import time
+from langchain_community.tools.file_management.read import ReadFileTool
+from langgraph.prebuilt import create_react_agent
+
+
+
 @api_view(['POST'])
 def get_views(request):
     r1=request.data
@@ -89,3 +98,39 @@ def call_agent(request):
     response=agent.invoke({"messages":[{"role":"user","content":"Get me 3 recent Documents"}]})
 
     return Response({"Response":response['messages'][-1].content})
+
+
+@api_view(['POST','GET'])
+def get_user_prompt(request):
+    if request.method=='POST':
+        checkpointer=InMemorySaver()
+        payload=request.data
+        uploaded = request.FILES["docs"]
+        with tempfile.NamedTemporaryFile(suffix=uploaded.name, delete=False) as tmp:
+            for chunk in uploaded.chunks():
+                tmp.write(chunk)
+            file_path = tmp.name
+        
+        try:
+            read_tool = ReadFileTool(root_dir=os.path.dirname(file_path))
+            agent=agent_res(None,checkpointer)
+            agent = agent.with_config({
+                "checkpoint_dir": os.path.join(settings.BASE_DIR, "checkpoints"),
+                "checkpoint_interval": 50,
+                "thread_id": str(uuid.uuid4()),
+            })
+
+            result = agent.invoke({
+            "file_path": file_path,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"I have uploaded a file named '{file_path}'. Please use the `CV_reader` tool to open and analyze it as a CV."
+                }
+            ]
+        })
+            return Response({"review": result['messages'][-1].content})
+
+        finally:
+            # Cleanup
+            os.remove(file_path)

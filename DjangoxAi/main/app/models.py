@@ -21,5 +21,8 @@ class Staff(models.Model):
     updated_at=models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.owner.username}:{self.staff_user.username}"
+        return f"{self.staff_user.username}"
     
+class CV(models.Model):
+    owner_cv=models.ForeignKey(Doc,on_delete=models.CASCADE)
+    docs=models.FileField()
