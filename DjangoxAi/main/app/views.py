@@ -4,7 +4,7 @@ from .serializers import DocSerializer,StaffSerializer
 from django.contrib.auth.models import User
 from .models import Doc,Staff
 from .permissions.permit import permit_one
-from .ai.tools import l_doc,get_doc
+from .ai.tools import l_doc,get_doc,TavilySearchTool
 from .ai.llms_config import config_llm
 from .ai.agent_conf import agent_res
 from langgraph.checkpoint.memory import InMemorySaver
@@ -14,6 +14,12 @@ import uuid
 import time
 from langchain_community.tools.file_management.read import ReadFileTool
 from langgraph.prebuilt import create_react_agent
+from langgraph.graph import StateGraph
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain.tools import tool
+from langchain_community.tools.file_management.read import ReadFileTool
+from pydantic import BaseModel
+from typing import List, Dict
 
 
 
@@ -99,6 +105,68 @@ def call_agent(request):
 
     return Response({"Response":response['messages'][-1].content})
 
+class CVReviewState(BaseModel):
+    agent_response: str
+    search_query: str
+    parsed_suggestions: List[str] = []
+    tavily_references: Dict = {}
+    cv_review_enhanced: Dict = {}
+
+def run_tavily_tool(state: CVReviewState) -> dict:
+    query = state.search_query
+    result = TavilySearchTool.invoke({"query": query})
+    return {"tavily_references": result}
+
+def get_cv_review_agent():
+    graph = StateGraph(CVReviewState)
+
+    graph.add_node("ParseAgentResponse", parse_agent_response)
+    graph.add_node("TavilySearch", run_tavily_tool)
+    graph.add_node("CombineResults", combine_results)
+
+    graph.add_edge("ParseAgentResponse", "CombineResults")
+    graph.add_edge("TavilySearch", "CombineResults")
+
+    graph.add_edge("__start__", "ParseAgentResponse")
+    graph.add_edge("__start__", "TavilySearch")
+    graph.set_finish_point("CombineResults")
+
+    return graph.compile()
+
+def process_agent_review(agent_response:str):
+    checkpointer=InMemorySaver()
+    try:
+        print("I am at Process Agent Review func.\n",agent_response)
+        cv_agent = get_cv_review_agent()
+        cv_agent = cv_agent.with_config({
+            "checkpoint_dir": os.path.join(settings.BASE_DIR, "checkpoints"),
+            "checkpoint_interval": 50,
+            "thread_id": str(uuid.uuid4()),
+        })
+        inputs = {
+            "agent_response": agent_response,
+            "search_query": "CV improvement examples Tavily"
+        }
+
+        result = cv_agent.invoke(inputs)
+
+        return result["cv_review_enhanced"]
+    finally:
+        pass
+
+def parse_agent_response(state: CVReviewState) -> dict:
+    agent_response = state.agent_response
+    lines = agent_response.splitlines()
+    suggestions = [line.strip() for line in lines if line.strip().startswith(('-', '1.', '•'))]
+    return {"parsed_suggestions": suggestions}
+
+def combine_results(state: dict) -> dict:
+    return {
+        "cv_review_enhanced": {
+            "suggestions": state.parsed_suggestions,
+            "tavily_references": state.tavily_references
+        }
+    }
 
 @api_view(['POST','GET'])
 def get_user_prompt(request):
@@ -129,8 +197,9 @@ def get_user_prompt(request):
                 }
             ]
         })
-            return Response({"review": result['messages'][-1].content})
+            next_node= result['messages'][-1].content
 
+            enhanced = process_agent_review(next_node)
+            return Response({"review":enhanced})
         finally:
-            # Cleanup
             os.remove(file_path)

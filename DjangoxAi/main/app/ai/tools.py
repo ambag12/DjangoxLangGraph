@@ -73,3 +73,16 @@ def CV_reader(file_path: str):
     return {"content": res.content}
 
 
+@tool
+def TavilySearchTool(query: str) -> str:
+    """
+    Perform web search on Tavily to find CV improvement examples.
+    """
+    return {"content": query}
+
+@tool
+def Rag_get_tool():
+    """
+    Rag Tool
+    """
+    pass

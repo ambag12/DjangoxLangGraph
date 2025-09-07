@@ -6,7 +6,7 @@ User=settings.AUTH_USER_MODEL
 class Doc(models.Model):
     
     owner=models.ForeignKey(User,on_delete=models.CASCADE,to_field="username")
-    title=models.CharField(default="Title")
+    title=models.CharField(default="Title",max_length=50)
     active_at=models.DateTimeField(auto_now=True)
     updated_at=models.DateTimeField(auto_now=True)
     created_at=models.DateTimeField(auto_now_add=True)
