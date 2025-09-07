@@ -1,12 +1,13 @@
 Django==5.2.4
 django_environ==0.12.0
 djangorestframework==3.16.0
+
 langchain==0.3.26
 langchain_cohere==0.4.4
 langchain_community==0.3.27
-langchain_core==0.3.69
 langgraph==0.5.3
-pdfminer==20191125
-pdfminer_six==20250506
+
+pdfminer.six==20250506
+
 pydantic==2.11.7
-python_docx==1.2.0
+python-docx==1.2.0
